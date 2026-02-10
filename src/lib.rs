@@ -1106,6 +1106,83 @@ impl JsOneVsRestSVM {
     }
 }
 
+/// JS-friendly wrapper for One-vs-One multiclass SVM.
+#[wasm_bindgen]
+pub struct JsMulticlassSVM {
+    inner: MulticlassSVM,
+}
+
+#[wasm_bindgen]
+impl JsMulticlassSVM {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        JsMulticlassSVM { inner: MulticlassSVM::new() }
+    }
+
+    /// Train on sparse data.
+    /// labels: integer class IDs (0, 1, 2, ...)
+    #[wasm_bindgen]
+    pub fn train(&mut self, samples_flat: &[f64], sample_lengths: &[usize], labels: &[i32]) {
+        let samples = unflatten_samples(samples_flat, sample_lengths);
+        self.inner.train_sparse(&samples, labels);
+    }
+
+    /// Train with custom parameters.
+    #[wasm_bindgen]
+    pub fn train_with_config(
+        &mut self,
+        samples_flat: &[f64],
+        sample_lengths: &[usize],
+        labels: &[i32],
+        use_smo: bool,
+        c: f64,
+        max_iter: usize,
+        tol: f64,
+    ) {
+        let samples = unflatten_samples(samples_flat, sample_lengths);
+        let config = TrainConfig {
+            solver: if use_smo { Solver::SMO } else { Solver::CoordinateDescent },
+            c,
+            max_iter,
+            tol,
+        };
+        self.inner.train_sparse_with_config(&samples, labels, &config);
+    }
+
+    /// Predict class for a single sparse sample.
+    #[wasm_bindgen]
+    pub fn predict(&self, sample_flat: &[f64]) -> i32 {
+        let sample = unflatten_single(sample_flat);
+        self.inner.predict_sparse(&sample)
+    }
+
+    /// Number of binary classifiers.
+    #[wasm_bindgen]
+    pub fn num_classifiers(&self) -> usize {
+        self.inner.num_classifiers()
+    }
+
+    /// Number of classes.
+    #[wasm_bindgen]
+    pub fn num_classes(&self) -> usize {
+        self.inner.num_classes()
+    }
+
+    /// Serialize to bytes.
+    #[wasm_bindgen]
+    pub fn to_bytes(&self) -> Result<Vec<u8>, JsError> {
+        self.inner.to_bytes().map_err(|e| JsError::new(&e.to_string()))
+    }
+
+    /// Deserialize from bytes.
+    #[wasm_bindgen]
+    pub fn from_bytes(bytes: &[u8]) -> Result<JsMulticlassSVM, JsError> {
+        MulticlassSVM::from_bytes(bytes)
+            .map(|inner| JsMulticlassSVM { inner })
+            .map_err(|e| JsError::new(&e.to_string()))
+    }
+}
+
 /// JS-friendly wrapper for Nearest Centroid classifier.
 #[wasm_bindgen]
 pub struct JsNearestCentroid {

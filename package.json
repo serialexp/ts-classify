@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "node server.js",
     "build": "wasm-pack build --target web --no-default-features",
+    "build:test": "wasm-pack build --target nodejs --no-default-features --out-dir pkg-node",
+    "test": "pnpm build:test && node --test 'test/**/*.test.mjs'",
     "release": "just-release"
   },
   "devDependencies": {
