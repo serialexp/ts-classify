@@ -44,9 +44,6 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
 
-      - name: Run tests
-        run: cargo test --release
-
       - name: Build WASM
         run: wasm-pack build --target web --no-default-features
 

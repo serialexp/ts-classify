@@ -29,6 +29,11 @@ jobs:
 
       - run: pnpm install
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        run: cargo test --release
+
       - name: Create release PR
         env:
           CI: 1
