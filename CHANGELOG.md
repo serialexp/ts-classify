@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (2026-02-10)
+
+### Features
+
+- expose One-vs-One SVM to WASM, add JS tests for all classifiers
+
+### Bug Fixes
+
+- use Node LTS in CI workflows for glob support in test runner
+
 ## 0.1.1 (2026-02-10)
 
 ### Bug Fixes
