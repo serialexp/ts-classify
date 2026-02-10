@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ts-classify Demo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #444;
+            font-size: 1.2em;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input[type="text"], select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            flex: 1;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        button.danger:hover {
+            background: #c82333;
+        }
+        button.success {
+            background: #28a745;
+        }
+        button.success:hover {
+            background: #218838;
+        }
+        .examples-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .example-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .example-item:last-child {
+            border-bottom: none;
+        }
+        .example-text {
+            flex: 1;
+            font-family: monospace;
+        }
+        .example-label {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .remove-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 16px;
+        }
+        .remove-btn:hover {
+            color: #dc3545;
+        }
+        .class-manager {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .class-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+        }
+        .class-tag .count {
+            margin-left: 6px;
+            background: rgba(255,255,255,0.3);
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .new-class-input {
+            display: flex;
+            gap: 8px;
+        }
+        .new-class-input input {
+            width: 150px;
+        }
+        #status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        #status.info {
+            display: block;
+            background: #e7f3ff;
+            color: #004085;
+        }
+        #status.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+        }
+        #status.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .prediction-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .prediction-result h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .prediction-class {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .confidence-bars {
+            margin-top: 10px;
+        }
+        .confidence-bar {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .confidence-bar .label {
+            width: 100px;
+            font-size: 13px;
+        }
+        .confidence-bar .bar {
+            flex: 1;
+            height: 20px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .confidence-bar .fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .confidence-bar .value {
+            width: 60px;
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ts-classify Demo</h1>
+    <p>Train a text classifier in your browser using WebAssembly. Choose between SVM or Nearest Centroid algorithms.</p>
+
+    <div class="section">
+        <h2>1. Define Classes</h2>
+        <div class="class-manager" id="classManager"></div>
+        <div class="new-class-input">
+            <input type="text" id="newClassName" placeholder="New class name...">
+            <button onclick="addClass()">Add Class</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Add Training Examples</h2>
+        <div class="input-row">
+            <input type="text" id="exampleText" placeholder="Enter example text...">
+            <select id="exampleClass"></select>
+            <button onclick="addExample()">Add</button>
+        </div>
+        <div class="examples-list" id="examplesList"></div>
+        <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="stats" id="stats">No examples yet</div>
+            <button class="danger" onclick="clearExamples()">Clear All</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Train Model</h2>
+        <div class="input-row">
+            <select id="algorithmSelect">
+                <option value="centroid">Nearest Centroid (fast)</option>
+                <option value="svm">SVM (more accurate)</option>
+            </select>
+            <button class="success" onclick="trainModel()" id="trainBtn" disabled>Train</button>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Classify Text</h2>
+        <div class="input-row">
+            <input type="text" id="classifyText" placeholder="Enter text to classify...">
+            <button onclick="classify()" id="classifyBtn" disabled>Classify</button>
+        </div>
+        <div class="prediction-result" id="predictionResult" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        import init, { JsOneVsRestSVM, JsNearestCentroid } from '../pkg/ts_classify.js';
+
+        let classifier = null;
+        let currentAlgorithm = null;
+        let classes = [];
+        let examples = [];
+        let isModelTrained = false;
+
+        // Color palette for classes
+        const colors = [
+            '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
+            '#6f42c1', '#fd7e14', '#20c997', '#e83e8c', '#6c757d'
+        ];
+
+        // Initialize WASM
+        async function initWasm() {
+            await init();
+            console.log('WASM initialized');
+        }
+        initWasm();
+
+        // Extract character trigrams from text
+        function extractFeatures(text) {
+            const normalized = text.toLowerCase().trim();
+            const trigrams = {};
+
+            // Add start/end markers
+            const padded = '^^' + normalized + '$$';
+
+            for (let i = 0; i < padded.length - 2; i++) {
+                const trigram = padded.slice(i, i + 3);
+                const hash = hashTrigram(trigram);
+                trigrams[hash] = (trigrams[hash] || 0) + 1;
+            }
+
+            return trigrams;
+        }
+
+        // Simple hash function for trigrams
+        function hashTrigram(s) {
+            let hash = 0;
+            for (let i = 0; i < s.length; i++) {
+                hash = ((hash << 5) - hash + s.charCodeAt(i)) | 0;
+            }
+            return Math.abs(hash) % 100000; // Keep feature space bounded
+        }
+
+        // Convert features to flat sparse array
+        function featuresToFlat(features) {
+            const pairs = Object.entries(features)
+                .map(([k, v]) => [parseInt(k), v])
+                .sort((a, b) => a[0] - b[0]);
+
+            const flat = [];
+            for (const [idx, val] of pairs) {
+                flat.push(idx, val);
+            }
+            return flat;
+        }
+
+        // Add a new class
+        window.addClass = function() {
+            const input = document.getElementById('newClassName');
+            const name = input.value.trim();
+            if (!name) return;
+            if (classes.includes(name)) {
+                alert('Class already exists');
+                return;
+            }
+
+            classes.push(name);
+            input.value = '';
+            updateClassDisplay();
+            updateStats();
+        };
+
+        function updateClassDisplay() {
+            const manager = document.getElementById('classManager');
+            const select = document.getElementById('exampleClass');
+
+            manager.innerHTML = classes.map((c, i) => {
+                const count = examples.filter(e => e.classIdx === i).length;
+                return `<span class="class-tag" style="background: ${colors[i % colors.length]}; color: white;">
+                    ${c}<span class="count">${count}</span>
+                </span>`;
+            }).join('');
+
+            select.innerHTML = classes.map((c, i) =>
+                `<option value="${i}">${c}</option>`
+            ).join('');
+
+            document.getElementById('trainBtn').disabled = classes.length < 2;
+        }
+
+        // Add training example
+        window.addExample = function() {
+            const textInput = document.getElementById('exampleText');
+            const classSelect = document.getElementById('exampleClass');
+
+            const text = textInput.value.trim();
+            if (!text) return;
+            if (classes.length === 0) {
+                alert('Please add at least one class first');
+                return;
+            }
+
+            examples.push({
+                text,
+                classIdx: parseInt(classSelect.value),
+                features: extractFeatures(text)
+            });
+
+            textInput.value = '';
+            updateExamplesDisplay();
+            updateClassDisplay();
+            updateStats();
+            isModelTrained = false;
+            document.getElementById('classifyBtn').disabled = true;
+        };
+
+        function updateExamplesDisplay() {
+            const list = document.getElementById('examplesList');
+            list.innerHTML = examples.map((e, i) => `
+                <div class="example-item">
+                    <span class="example-text">${escapeHtml(e.text)}</span>
+                    <span class="example-label" style="background: ${colors[e.classIdx % colors.length]}; color: white;">
+                        ${classes[e.classIdx]}
+                    </span>
+                    <button class="remove-btn" onclick="removeExample(${i})">×</button>
+                </div>
+            `).join('');
+        }
+
+        window.removeExample = function(idx) {
+            examples.splice(idx, 1);
+            updateExamplesDisplay();
+            updateClassDisplay();
+            updateStats();
+            isModelTrained = false;
+            document.getElementById('classifyBtn').disabled = true;
+        };
+
+        window.clearExamples = function() {
+            if (examples.length === 0) return;
+            if (!confirm('Clear all examples?')) return;
+            examples = [];
+            updateExamplesDisplay();
+            updateClassDisplay();
+            updateStats();
+            isModelTrained = false;
+            document.getElementById('classifyBtn').disabled = true;
+        };
+
+        function updateStats() {
+            const stats = document.getElementById('stats');
+            if (examples.length === 0) {
+                stats.textContent = 'No examples yet';
+            } else {
+                // Count unique feature indices across all examples
+                const allFeatures = new Set();
+                for (const example of examples) {
+                    for (const idx of Object.keys(example.features)) {
+                        allFeatures.add(idx);
+                    }
+                }
+                stats.textContent = `${examples.length} examples, ${allFeatures.size} unique trigrams`;
+            }
+        }
+
+        // Train the model
+        window.trainModel = async function() {
+            const status = document.getElementById('status');
+
+            if (classes.length < 2) {
+                status.className = 'error';
+                status.textContent = 'Need at least 2 classes';
+                return;
+            }
+
+            // Check each class has at least one example
+            for (let i = 0; i < classes.length; i++) {
+                const count = examples.filter(e => e.classIdx === i).length;
+                if (count === 0) {
+                    status.className = 'error';
+                    status.textContent = `Class "${classes[i]}" has no examples`;
+                    return;
+                }
+            }
+
+            status.className = 'info';
+            status.textContent = 'Training...';
+
+            // Allow UI to update
+            await new Promise(r => setTimeout(r, 10));
+
+            try {
+                const startTime = performance.now();
+
+                // Prepare training data
+                const allFlat = [];
+                const sampleLengths = [];
+                const labels = [];
+
+                for (const example of examples) {
+                    const flat = featuresToFlat(example.features);
+                    allFlat.push(...flat);
+                    sampleLengths.push(flat.length / 2); // Number of (idx, val) pairs
+                    labels.push(example.classIdx);
+                }
+
+                // Create and train classifier
+                const algorithm = document.getElementById('algorithmSelect').value;
+                currentAlgorithm = algorithm;
+
+                if (algorithm === 'svm') {
+                    classifier = new JsOneVsRestSVM();
+                } else {
+                    classifier = new JsNearestCentroid();
+                }
+
+                classifier.train(
+                    new Float64Array(allFlat),
+                    new Uint32Array(sampleLengths),
+                    new Int32Array(labels)
+                );
+
+                const elapsed = (performance.now() - startTime).toFixed(3);
+                const numClasses = algorithm === 'svm' ? classifier.num_classifiers() : classifier.num_classes();
+                const algoName = algorithm === 'svm' ? 'SVM' : 'Nearest Centroid';
+
+                status.className = 'success';
+                status.textContent = `Trained ${algoName} with ${numClasses} classes in ${elapsed}ms`;
+
+                isModelTrained = true;
+                document.getElementById('classifyBtn').disabled = false;
+
+            } catch (e) {
+                status.className = 'error';
+                status.textContent = `Training failed: ${e.message}`;
+                console.error(e);
+            }
+        };
+
+        // Classify text
+        window.classify = function() {
+            if (!isModelTrained) return;
+
+            const text = document.getElementById('classifyText').value.trim();
+            if (!text) return;
+
+            const features = extractFeatures(text);
+            const flat = featuresToFlat(features);
+            const sample = new Float64Array(flat);
+
+            // Run multiple iterations for accurate timing
+            const iterations = 100;
+            const startTime = performance.now();
+            let prediction;
+            let marginsFlat;
+            for (let i = 0; i < iterations; i++) {
+                prediction = classifier.predict(sample);
+                marginsFlat = classifier.margins(sample);
+            }
+            const elapsed = ((performance.now() - startTime) / iterations).toFixed(3);
+
+            // Parse margins: [class0, margin0, class1, margin1, ...]
+            const scores = [];
+            for (let i = 0; i < marginsFlat.length; i += 2) {
+                const classIdx = marginsFlat[i];
+                const margin = marginsFlat[i + 1];
+                scores.push({ classIdx, margin, name: classes[classIdx] });
+            }
+
+            // Convert margins to probabilities via softmax
+            const maxMargin = Math.max(...scores.map(s => s.margin));
+            const expScores = scores.map(s => Math.exp(s.margin - maxMargin));
+            const sumExp = expScores.reduce((a, b) => a + b, 0);
+            scores.forEach((s, i) => {
+                s.prob = expScores[i] / sumExp;
+            });
+
+            // Sort by probability descending
+            scores.sort((a, b) => b.prob - a.prob);
+
+            const result = document.getElementById('predictionResult');
+            result.style.display = 'block';
+            result.innerHTML = `
+                <h3>Prediction (${elapsed}ms)</h3>
+                <div class="prediction-class" style="color: ${colors[prediction % colors.length]}">
+                    ${classes[prediction]}
+                </div>
+                <div class="confidence-bars">
+                    ${scores.map(s => `
+                        <div class="confidence-bar">
+                            <span class="label">${s.name}</span>
+                            <div class="bar">
+                                <div class="fill" style="width: ${(s.prob * 100).toFixed(1)}%; background: ${colors[s.classIdx % colors.length]};"></div>
+                            </div>
+                            <span class="value">${(s.prob * 100).toFixed(1)}%</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add some default classes for convenience
+        classes = ['Positive', 'Negative'];
+        updateClassDisplay();
+
+        // Add sample training data
+        const sampleData = [
+            { text: "Amazing product, absolutely love it!", classIdx: 0 },
+            { text: "Terrible quality, broke after one day", classIdx: 1 },
+            { text: "Best purchase I've made this year", classIdx: 0 },
+            { text: "Complete waste of money", classIdx: 1 },
+            { text: "Exceeded all my expectations", classIdx: 0 },
+            { text: "Would not recommend to anyone", classIdx: 1 },
+            { text: "Five stars, fantastic experience", classIdx: 0 },
+            { text: "Disappointed and frustrated", classIdx: 1 },
+            { text: "Works perfectly, great value", classIdx: 0 },
+            { text: "Awful customer service, never again", classIdx: 1 },
+        ];
+        for (const item of sampleData) {
+            examples.push({
+                text: item.text,
+                classIdx: item.classIdx,
+                features: extractFeatures(item.text)
+            });
+        }
+        updateExamplesDisplay();
+        updateClassDisplay();
+        updateStats();
+    </script>
+</body>
+</html>
