@@ -1,12 +1,16 @@
 {
-  "name": "ts-classify-dev",
+  "name": "ts-classify",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "repository": "https://github.com/serialexp/ts-classify",
   "scripts": {
     "dev": "node server.js",
-    "build": "wasm-pack build --target web --no-default-features"
+    "build": "wasm-pack build --target web --no-default-features",
+    "release": "just-release"
   },
   "devDependencies": {
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "just-release": "^0.7.0"
   }
 }

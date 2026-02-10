@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Fast text classification with SVM and Nearest Centroid (WebAssembly)"
 license = "MIT"
+repository = "https://github.com/serialexp/ts-classify"
 
 [lib]
 name = "ts_classify"

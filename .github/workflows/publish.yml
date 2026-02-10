@@ -1,0 +1,62 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.head_commit.message, 'release:')
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: pnpm install
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Sync version to Cargo.toml
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+
+      - name: Run tests
+        run: cargo test --release
+
+      - name: Build WASM
+        run: wasm-pack build --target web --no-default-features
+
+      - name: Upgrade npm for provenance support
+        run: npm install -g npm@latest
+
+      - name: Publish to npm
+        run: npm publish ./pkg --access public --provenance
+
+      - name: Create GitHub release
+        run: pnpm just-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
